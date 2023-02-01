@@ -1,49 +1,82 @@
-class TicketManager {
-    constructor() {
-      this.eventos = [];
-      this.precioBaseDeGanancia = 0.15;
-      this.id = 0;
-    }
+const fs = require('fs');
 
-    getEventos() {
-      return this.eventos;
-    }
-    
-    agregarEvento(nombre, lugar, precio, capacidad = 50, fecha = new Date()) {
-      this.eventos.push({
-        id: this.id++,
-        nombre: nombre,
-        lugar: lugar,
-        precio: precio + (precio * this.precioBaseDeGanancia),
-        capacidad: capacidad,
-        fecha: fecha,
-        participantes: []
-      });
-    }
-    
-    agregarUsuario(eventoId, usuarioId) {
-      let evento = this.eventos.find(evento => evento.id === eventoId);
-      if (!evento) {
-        return;
-      }
-      if (evento.participantes.indexOf(usuarioId) === -1) {
-        evento.participantes.push(usuarioId);
-      }
-    }
-    
-    ponerEventoEnGira(eventoId, nuevaLocalidad, nuevaFecha) {
-      let evento = this.eventos.find(evento => evento.id === eventoId);
-      if (!evento) {
-        return;
-      }
-      this.eventos.push({
-        id: this.id++,
-        nombre: evento.nombre,
-        lugar: nuevaLocalidad,
-        precio: evento.precio,
-        capacidad: evento.capacidad,
-        fecha: nuevaFecha,
-        participantes: []
-      });
-    }
+class ProductManager {
+  constructor(path) {
+    this.path = path;
+    this.nextId = 1;
   }
+
+  addProduct(product) {
+    product.id = this.nextId++;
+    fs.readFile(this.path, 'utf8', (err, data) => {
+      if (err) throw err;
+      let products = JSON.parse(data);
+      products.push(product);
+      fs.writeFile(this.path, JSON.stringify(products), (err) => {
+        if (err) throw err;
+      });
+    });
+  }
+
+  getProducts() {
+    return new Promise((resolve, reject) => {
+      fs.readFile(this.path, 'utf8', (err, data) => {
+        if (err) reject(err);
+        resolve(JSON.parse(data));
+      });
+    });
+  }
+
+  getProductById(id) {
+    return new Promise((resolve, reject) => {
+      fs.readFile(this.path, 'utf8', (err, data) => {
+        if (err) reject(err);
+        let products = JSON.parse(data);
+        let product = products.find(p => p.id === id);
+        resolve(product);
+      });
+    });
+  }
+
+  updateProduct(id, product) {
+    return new Promise((resolve, reject) => {
+      fs.readFile(this.path, 'utf8', (err, data) => {
+        if (err) reject(err);
+        let products = JSON.parse(data);
+        let productIndex = products.findIndex(p => p.id === id);
+        products[productIndex] = { ...products[productIndex], ...product };
+        fs.writeFile(this.path, JSON.stringify(products), (err) => {
+          if (err) reject(err);
+          resolve();
+        });
+      });
+    });
+  }
+
+  deleteProduct(id) {
+    return new Promise((resolve, reject) => {
+      fs.readFile(this.path, 'utf8', (err, data) => {
+        if (err) reject(err);
+        let products = JSON.parse(data);
+        products = products.filter(p => p.id !== id);
+        fs.writeFile(this.path, JSON.stringify(products), (err) => {
+          if (err) reject(err);
+          resolve();
+        });
+      });
+    });
+  }
+}
+
+module.exports = ProductManager;
+
+const productsPath = './products.json';
+const products = new ProductManager(productsPath);
+
+products.getProducts()
+  .then(data => {
+    console.log(data)
+  })
+  .catch(err => {
+    console.error(err);
+  });
